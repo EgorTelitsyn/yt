@@ -6,7 +6,7 @@
 $COOKIES = ""
 
 # Output directory
-$OUTPUT_DIR = "$env:USERPROFILE/Videos"
+$OUTPUT_DIR = "$env:USERPROFILE\Videos"
 
 # Video settings
 $MAX_RESOLUTION = 1440

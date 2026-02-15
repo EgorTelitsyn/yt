@@ -17,7 +17,7 @@ function Write-YtSettings {
         $missing = @()
         $defaults = @(
             @{ Var = "COOKIES";           Line = '$$COOKIES = ""' },
-            @{ Var = "OUTPUT_DIR";        Line = '$$OUTPUT_DIR = "$$env:USERPROFILE/Videos"' },
+            @{ Var = "OUTPUT_DIR";        Line = '$$OUTPUT_DIR = "$$env:USERPROFILE\Videos"' },
             @{ Var = "MAX_RESOLUTION";    Line = '$$MAX_RESOLUTION = 1440' },
             @{ Var = "VIDEO_FORMAT";      Line = '$$VIDEO_FORMAT = "bestvideo[height<=$$MAX_RESOLUTION][vcodec*=265]+bestaudio/bestvideo[height<=$$MAX_RESOLUTION][vcodec*=264]+bestaudio/bestvideo[height<=$$MAX_RESOLUTION][vcodec!*=vp0][vcodec!*=vp9][vcodec!*=av01]+bestaudio/best"' },
             @{ Var = "VIDEO_SORT";        Line = '$$VIDEO_SORT = "res:$$MAX_RESOLUTION,vcodec:h265,acodec:aac"' },
@@ -43,6 +43,21 @@ function Write-YtSettings {
 
 function Install-YtScripts {
     $scriptsDir = Join-Path $setupDir "scripts"
+
+    # Install helper scripts
+    $helpersDir = Join-Path $binDir "helpers"
+    if (-not (Test-Path $helpersDir)) {
+        New-Item -ItemType Directory -Path $helpersDir -Force | Out-Null
+    }
+    $helperFiles = @("common.ps1", "time.ps1")
+    foreach ($file in $helperFiles) {
+        $src = Join-Path $scriptsDir "helpers\$file"
+        $dst = Join-Path $helpersDir $file
+        (Get-Content $src -Raw) | Set-Content -Path $dst -Encoding UTF8
+    }
+    Write-Host "Created helpers ($($helperFiles.Count) files)"
+
+    # Install main scripts
     $scriptFiles = @("ytv.ps1", "yta.ps1", "ytvc.ps1", "ytac.ps1", "yt.ps1")
     foreach ($file in $scriptFiles) {
         $src = Join-Path $scriptsDir $file
@@ -50,6 +65,7 @@ function Install-YtScripts {
         (Get-Content $src -Raw) | Set-Content -Path $dst -Encoding UTF8
         Write-Host "Created $file"
     }
+
     # yt.bat uses ASCII encoding
     $batSrc = Join-Path $scriptsDir "yt.bat"
     $batDst = Join-Path $binDir "yt.bat"

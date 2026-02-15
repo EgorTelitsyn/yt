@@ -45,7 +45,7 @@ function Show-Settings {
         @{ Var = "WRITE_DESCRIPTION"; Label = "Write description"; Desc = "save .description file" }
     )
 
-    $totalItems = $toggles.Count + 1  # +1 for Cookies
+    $totalItems = $toggles.Count + 2  # +2 for Cookies and Output dir
     $ssel = 0
 
     function Draw-Settings {
@@ -76,6 +76,18 @@ function Show-Settings {
             Write-Host "        $clabel" -NoNewline
             Write-Host " $cdesc" -ForegroundColor DarkGray
         }
+        # Output directory item
+        $odval = (Get-Variable -Name "OUTPUT_DIR" -ValueOnly)
+        $oddesc = $ExecutionContext.InvokeCommand.ExpandString($odval)
+        $odlabel = "Output directory".PadRight(20)
+        if ($ssel -eq $toggles.Count + 1) {
+            Write-Host "  >     " -NoNewline -ForegroundColor Cyan
+            Write-Host "$odlabel" -NoNewline -ForegroundColor Cyan
+            Write-Host " $oddesc" -ForegroundColor DarkGray
+        } else {
+            Write-Host "        $odlabel" -NoNewline
+            Write-Host " $oddesc" -ForegroundColor DarkGray
+        }
         Write-Host ""
         Write-Host "  Enter: toggle/edit  |  Esc: save & back" -ForegroundColor DarkGray
     }
@@ -104,7 +116,7 @@ function Show-Settings {
                 $varName = $toggles[$ssel].Var
                 $current = (Get-Variable -Name $varName -ValueOnly)
                 Set-Variable -Name $varName -Value (-not $current)
-            } else {
+            } elseif ($ssel -eq $toggles.Count) {
                 # Cookies editor
                 [Console]::CursorVisible = $true
                 $cval = (Get-Variable -Name "COOKIES" -ValueOnly)
@@ -114,6 +126,25 @@ function Show-Settings {
                 Write-Host "  Browser name, browser:path, or empty to disable" -ForegroundColor DarkGray
                 $newVal = Read-Host "  "
                 Set-Variable -Name "COOKIES" -Value $newVal
+                [Console]::CursorVisible = $false
+                [Console]::Clear()
+                Write-Host ""
+                Write-Host "  Settings" -ForegroundColor Cyan
+                Write-Host ""
+                $settingsTop = [Console]::CursorTop
+            } else {
+                # Output directory editor
+                [Console]::CursorVisible = $true
+                $odval = (Get-Variable -Name "OUTPUT_DIR" -ValueOnly)
+                $oddesc = $ExecutionContext.InvokeCommand.ExpandString($odval)
+                Write-Host ""
+                Write-Host "  Current: " -NoNewline
+                Write-Host $oddesc -ForegroundColor Cyan
+                Write-Host "  Full path or use `$env:USERPROFILE for user directory" -ForegroundColor DarkGray
+                $newVal = Read-Host "  "
+                if ($newVal) {
+                    Set-Variable -Name "OUTPUT_DIR" -Value $newVal
+                }
                 [Console]::CursorVisible = $false
                 [Console]::Clear()
                 Write-Host ""
@@ -141,6 +172,12 @@ function Show-Settings {
     $oldCookies = [regex]::Match($content, '\$COOKIES\s*=\s*"[^"]*"').Value
     if ($oldCookies) {
         $content = $content.Replace($oldCookies, '$COOKIES = "' + $cval + '"')
+    }
+    # Save output directory
+    $odval = (Get-Variable -Name "OUTPUT_DIR" -ValueOnly)
+    $oldOutputDir = [regex]::Match($content, '\$OUTPUT_DIR\s*=\s*"[^"]*"').Value
+    if ($oldOutputDir) {
+        $content = $content.Replace($oldOutputDir, '$OUTPUT_DIR = "' + $odval + '"')
     }
     Set-Content -Path $settingsFile -Value $content -Encoding UTF8
 }
