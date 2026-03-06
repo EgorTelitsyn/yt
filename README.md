@@ -1,20 +1,13 @@
 # yt-dlp downloader
 
-Windows scripts for downloading video/audio from YouTube and other platforms. Optimized for Adobe Premiere Pro workflow.
+Windows scripts for downloading video and audio from YouTube and other platforms. Optimized for Adobe Premiere Pro workflow.
 
 ## Quick start
 
 1. Download `setup.bat` and `setup.ps1`
 2. Double-click `setup.bat`
-3. Restart terminal
+3. Restart your terminal
 4. Run `yt` to open the interactive menu
-
-## What setup does
-
-- Installs **yt-dlp** (from GitHub releases), **FFmpeg**, **Deno** (via winget)
-- Generates download scripts and launcher in `~/bin/`
-- Adds dependencies and `~/bin/` to PATH
-- On re-run: updates dependencies, patches missing settings without overwriting existing ones
 
 ## Usage
 
@@ -30,9 +23,16 @@ Run `yt` (or double-click `yt.bat` in `~/bin/`) to open the interactive menu:
     Settings       toggle flags
 ```
 
-Or run scripts directly: `ytv`, `yta`, `ytvc`, `ytac`.
+Or run scripts directly:
 
-Before downloading, scripts show a preview of the output directory and filename. After a successful download, a green confirmation message with the full file path is displayed.
+| Command | Description |
+|---------|-------------|
+| `ytv`  | Download video |
+| `yta`  | Download audio |
+| `ytvc` | Download video clip (timecodes) |
+| `ytac` | Download audio clip (timecodes) |
+
+Before downloading, scripts show a preview of the output directory and filename. After a successful download, a confirmation message with the full file path is displayed.
 
 ## Settings
 
@@ -48,8 +48,6 @@ Open via `yt` > Settings, or edit `~/bin/yt-settings.ps1` manually.
 
 ### Toggle flags
 
-Toggled via the Settings submenu (saved to `yt-settings.ps1`):
-
 | Flag | Default | yt-dlp option |
 |------|---------|---------------|
 | Embed metadata | on | `--embed-metadata` |
@@ -58,23 +56,38 @@ Toggled via the Settings submenu (saved to `yt-settings.ps1`):
 
 ## Defaults
 
-- Codec: H.265 (HEVC), fallback H.264
-- Container: MP4
-- Audio: MP3, best quality
+| Setting | Value |
+|---------|-------|
+| Video codec | H.265 (HEVC), fallback H.264 |
+| Container | MP4 |
+| Audio | MP3, best quality |
 
-## Generated scripts
+## What setup does
 
-| Script | Description |
-|--------|-------------|
+- Installs **yt-dlp**, **FFmpeg**, and **Deno** automatically
+- Copies scripts to `~/bin/` and adds it to PATH
+- Sets PowerShell execution policy for the scripts
+- On re-run: updates dependencies, patches missing settings without overwriting existing ones
+
+## Generated files
+
+After setup, the following files are placed in `~/bin/`:
+
+| File | Description |
+|------|-------------|
 | `yt.ps1` / `yt.bat` | Interactive launcher with menu |
 | `ytv.ps1` | Download video |
 | `yta.ps1` | Download audio |
 | `ytvc.ps1` | Download video clip (timecodes) |
 | `ytac.ps1` | Download audio clip (timecodes) |
-| `yt-settings.ps1` | Configuration (not overwritten on re-run) |
+| `yt-settings.ps1` | User configuration (not overwritten on re-run) |
+
+## Uninstall
+
+Double-click `uninstall.bat` and confirm when prompted. This removes all scripts from `~/bin/`, cleans up PATH, and uninstalls FFmpeg and Deno.
 
 ## Dependencies
 
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) -- video/audio downloader
-- [FFmpeg](https://github.com/FFmpeg/FFmpeg) -- media processing
-- [Deno](https://github.com/denoland/deno) -- JavaScript runtime (for YouTube PO token challenges)
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) — video/audio downloader
+- [FFmpeg](https://github.com/FFmpeg/FFmpeg) — media processing
+- [Deno](https://github.com/denoland/deno) — JavaScript runtime (for YouTube PO token challenges)
