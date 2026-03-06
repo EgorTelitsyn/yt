@@ -18,3 +18,6 @@ $MERGE_FORMAT = "mp4"
 $EMBED_METADATA = $true
 $EMBED_THUMBNAIL = $true
 $WRITE_DESCRIPTION = $false
+
+# Setup location (used by yt.ps1 to run updates)
+$SETUP_DIR = ""

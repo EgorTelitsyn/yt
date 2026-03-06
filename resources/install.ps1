@@ -2,24 +2,31 @@ function Install-YtDlp {
     Write-Host "[1/3] yt-dlp " -NoNewline
     $ytdlpPath = Join-Path $binDir "yt-dlp.exe"
     try {
-        $release = Invoke-RestMethod "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
-        $remoteVer = $release.tag_name
-        $localVer = if (Test-Path $ytdlpPath) { (& $ytdlpPath --version 2>&1) } else { "" }
-
-        if ($localVer -eq $remoteVer) {
-            Write-Host "latest ($remoteVer)" -ForegroundColor DarkGray
+        if (Test-Path $ytdlpPath) {
+            # Update in-place via yt-dlp's own updater (reliable, verifies integrity)
+            $localVer = (& $ytdlpPath --version 2>&1).Trim()
+            $null = Invoke-WithSpinner -ScriptBlock {
+                param($exe)
+                $ProgressPreference = 'SilentlyContinue'
+                & $exe -U 2>&1
+            } -ArgumentList @($ytdlpPath)
+            $newVer = (& $ytdlpPath --version 2>&1).Trim()
+            if ($localVer -ne $newVer) {
+                Write-Host "updated ($localVer -> $newVer)" -ForegroundColor Green
+            } else {
+                Write-Host "latest ($newVer)" -ForegroundColor DarkGray
+            }
         } else {
+            # First-time install: download from GitHub
+            $release = Invoke-RestMethod "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
+            $remoteVer = $release.tag_name
             $url = ($release.assets | Where-Object { $_.name -eq "yt-dlp.exe" }).browser_download_url
             $null = Invoke-WithSpinner -ScriptBlock {
                 param($u, $p)
                 $ProgressPreference = 'SilentlyContinue'
                 Invoke-WebRequest -Uri $u -OutFile $p -UseBasicParsing
             } -ArgumentList @($url, $ytdlpPath)
-            if ($localVer) {
-                Write-Host "updated ($localVer -> $remoteVer)" -ForegroundColor Green
-            } else {
-                Write-Host "installed ($remoteVer)" -ForegroundColor Green
-            }
+            Write-Host "installed ($remoteVer)" -ForegroundColor Green
         }
     } catch {
         Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red

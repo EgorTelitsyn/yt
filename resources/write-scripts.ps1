@@ -5,6 +5,7 @@ function Write-YtSettings {
         if ($detectedBrowser) {
             $template = $template -replace '\$COOKIES = ""', "`$COOKIES = `"$detectedBrowser`""
         }
+        $template = $template.Replace('$SETUP_DIR = ""', '$SETUP_DIR = "' + $setupDir + '"')
         $template | Set-Content -Path $settingsPath -Encoding UTF8
         if ($detectedBrowser) {
             Write-Host "Created yt-settings.ps1 (cookies: $detectedBrowser)" -ForegroundColor Green
@@ -37,6 +38,14 @@ function Write-YtSettings {
             Write-Host "yt-settings.ps1 updated ($($missing.Count) new variables)" -ForegroundColor Green
         } else {
             Write-Host "yt-settings.ps1 up to date" -ForegroundColor DarkGray
+        }
+        # Always keep SETUP_DIR current (may change if repo moved)
+        $content = Get-Content $settingsPath -Raw
+        if ($content -notmatch '\$SETUP_DIR\s*=') {
+            Add-Content -Path $settingsPath -Value "`r`n`$SETUP_DIR = `"$setupDir`"" -Encoding UTF8
+        } elseif ($content -match '\$SETUP_DIR\s*=\s*""') {
+            $content = $content.Replace('$SETUP_DIR = ""', '$SETUP_DIR = "' + $setupDir + '"')
+            Set-Content -Path $settingsPath -Value $content -Encoding UTF8
         }
     }
 }

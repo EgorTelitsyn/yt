@@ -37,7 +37,7 @@ if ($userPath -notlike "*$binDir*") {
 
 # Set execution policy
 Write-Host "Setting execution policy..." -NoNewline
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction SilentlyContinue
+try { Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction Stop } catch {}
 Write-Host " done" -ForegroundColor Green
 
 Write-Host ""

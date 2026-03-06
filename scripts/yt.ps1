@@ -2,13 +2,57 @@
 . "$PSScriptRoot\yt-settings.ps1"
 
 $settingsFile = Join-Path $PSScriptRoot "yt-settings.ps1"
+$cachePath    = Join-Path $PSScriptRoot ".yt-update-cache.json"
+
+# --- Background update check (refreshes cache if >24h old) ---
+$shouldRefresh = (-not (Test-Path $cachePath))
+if (-not $shouldRefresh) {
+    $shouldRefresh = ((Get-Date) - (Get-Item $cachePath).LastWriteTime).TotalHours -gt 24
+}
+if ($shouldRefresh) {
+    $ytExe = Join-Path $PSScriptRoot "yt-dlp.exe"
+    Start-Job -ScriptBlock {
+        param($cp, $exe)
+        try {
+            $updates = @()
+            $ProgressPreference = 'SilentlyContinue'
+            $release = Invoke-RestMethod "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
+            $latest  = $release.tag_name
+            if (Test-Path $exe) {
+                $local = (& $exe --version 2>&1).Trim()
+                if ($local -ne $latest) {
+                    $updates += [PSCustomObject]@{ name = "yt-dlp"; current = $local; latest = $latest }
+                }
+            }
+            [PSCustomObject]@{
+                checked = (Get-Date -Format "yyyy-MM-dd")
+                updates = $updates
+            } | ConvertTo-Json | Set-Content $cp -Encoding UTF8
+        } catch {}
+    } -ArgumentList @($cachePath, $ytExe) | Out-Null
+}
+
+# Read cached update info from previous check
+$pendingUpdates = @()
+if (Test-Path $cachePath) {
+    try {
+        $cache = Get-Content $cachePath -Raw | ConvertFrom-Json
+        if ($cache.updates) { $pendingUpdates = @($cache.updates) }
+    } catch {}
+}
+
+$updateDesc  = if ($pendingUpdates.Count -gt 0) {
+    "update available: " + (($pendingUpdates | ForEach-Object { "$($_.name) $($_.latest)" }) -join ", ")
+} else { "run setup to update" }
+$updateColor = if ($pendingUpdates.Count -gt 0) { "Yellow" } else { "DarkGray" }
 
 $items = @(
-    @{ Label = "Video";       Desc = "download video";              Script = "ytv.ps1" },
-    @{ Label = "Audio";       Desc = "download audio";              Script = "yta.ps1" },
+    @{ Label = "Video";       Desc = "download video";              Script = "ytv.ps1"  },
+    @{ Label = "Audio";       Desc = "download audio";              Script = "yta.ps1"  },
     @{ Label = "Video clip";  Desc = "video segment (timecodes)";   Script = "ytvc.ps1" },
     @{ Label = "Audio clip";  Desc = "audio segment (timecodes)";   Script = "ytac.ps1" },
-    @{ Label = "Settings";    Desc = "toggle flags";                Script = "" }
+    @{ Label = "Settings";    Desc = "toggle flags";                Script = ""         },
+    @{ Label = "Update";      Desc = $updateDesc;                   Script = "_update"; DescColor = $updateColor }
 )
 
 $sel = 0
@@ -17,6 +61,10 @@ function Show-MainMenu {
     [Console]::Clear()
     Write-Host ""
     Write-Host "  yt-dlp downloader" -ForegroundColor Cyan
+    if ($pendingUpdates.Count -gt 0) {
+        $names = ($pendingUpdates | ForEach-Object { "$($_.name) $($_.latest)" }) -join ", "
+        Write-Host "  [!] Update available: $names" -ForegroundColor Yellow
+    }
     Write-Host ""
     $script:menuTop = [Console]::CursorTop
     Draw-MainMenu
@@ -27,13 +75,14 @@ function Draw-MainMenu {
     for ($i = 0; $i -lt $items.Count; $i++) {
         $label = $items[$i].Label.PadRight(14)
         $desc  = $items[$i].Desc
+        $dc    = if ($items[$i].DescColor) { $items[$i].DescColor } else { "DarkGray" }
         if ($i -eq $sel) {
             Write-Host "  > " -NoNewline -ForegroundColor Cyan
             Write-Host "$label" -NoNewline -ForegroundColor Cyan
-            Write-Host " $desc" -ForegroundColor DarkGray
+            Write-Host " $desc" -ForegroundColor $dc
         } else {
             Write-Host "    $label" -NoNewline
-            Write-Host " $desc" -ForegroundColor DarkGray
+            Write-Host " $desc" -ForegroundColor $dc
         }
     }
 }
@@ -195,19 +244,32 @@ while ($true) {
         Draw-MainMenu
     }
     elseif ($key.Key -eq "Enter") {
-        if ($items[$sel].Script -eq "") {
+        if ($items[$sel].Script -eq "_update") {
+            if ($SETUP_DIR -and (Test-Path "$SETUP_DIR\setup.bat")) {
+                if (Test-Path $cachePath) { Remove-Item $cachePath -Force }
+                Start-Process "cmd.exe" -ArgumentList "/c `"$SETUP_DIR\setup.bat`""
+                Show-MainMenu
+            } else {
+                [Console]::Clear()
+                Write-Host ""
+                Write-Host "  Update" -ForegroundColor Cyan
+                Write-Host ""
+                Write-Host "  Setup location not found. Run setup.bat manually to update." -ForegroundColor DarkGray
+                Write-Host ""
+                Read-Host "  Press Enter to go back"
+                Show-MainMenu
+            }
+        } elseif ($items[$sel].Script -eq "") {
             Show-Settings
             Show-MainMenu
         } else {
-            break
+            [Console]::Clear()
+            Write-Host ""
+            $scriptPath = Join-Path $PSScriptRoot $items[$sel].Script
+            . $scriptPath
+            Write-Host ""
+            Read-Host "  Press Enter to return to menu"
+            Show-MainMenu
         }
     }
 }
-
-Write-Host ""
-
-$script = Join-Path $PSScriptRoot $items[$sel].Script
-. $script
-
-Write-Host ""
-Read-Host "Press Enter to exit"
