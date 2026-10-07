@@ -3,11 +3,18 @@
 . "$PSScriptRoot\helpers\common.ps1"
 . "$PSScriptRoot\helpers\time.ps1"
 
-$URL   = Read-Host "URL"
-$START = Read-Host "Start time (e.g. 00:01:30)"
-$END   = Read-Host "End time (e.g. 00:02:45)"
+$cookieArgs = Get-CookieArgs $COOKIES $COOKIES_FILE $USE_COOKIES_FILE
+if ($null -eq $cookieArgs) { return }
 
-if (-not $URL) { Write-Host "Error: URL is required"; exit 1 }
+$inp = Read-Steps @(
+    @{ Name = "URL";   Prompt = "URL" },
+    @{ Name = "START"; Prompt = "Start time (e.g. 00:01:30)" },
+    @{ Name = "END";   Prompt = "End time (e.g. 00:02:45)" }
+)
+if ($null -eq $inp) { $CANCELLED = $true; return }
+$URL   = $inp.URL
+$START = $inp.START
+$END   = $inp.END
 
 Ensure-OutputDirectory $OUTPUT_DIR
 
@@ -17,14 +24,14 @@ $outputTpl = "$OUTPUT_DIR\%(title)s [$startFmt-$endFmt].%(ext)s"
 
 # Preview
 $formatArgs = @("-f", "bestaudio/best", "-x", "--audio-format", "mp3")
-$filename = Get-DownloadPreview $URL $outputTpl $COOKIES $formatArgs
+$filename = Get-DownloadPreview $URL $outputTpl $cookieArgs $formatArgs
 if ($filename) { $filename = [System.IO.Path]::ChangeExtension($filename, "mp3") }
 
 $extraInfo = @{ "Segment" = "$START - $END" }
 Write-DownloadInfo $OUTPUT_DIR $filename $extraInfo
 
 $args_ = @("--ignore-config")
-if ($COOKIES) { $args_ += "--cookies-from-browser", $COOKIES }
+$args_ += $cookieArgs
 $args_ += "--download-sections", "*${START}-${END}"
 $args_ += "-f", "bestaudio/best", "-x", "--audio-format", "mp3", "--audio-quality", "0"
 if ($EMBED_METADATA) { $args_ += "--embed-metadata" }
@@ -33,6 +40,6 @@ $args_ += "--ignore-errors", "--no-overwrites", "--progress"
 $args_ += "-o", $outputTpl
 $args_ += $URL
 
-& yt-dlp @args_
+& $YTDLP @args_
 
 Write-Success $filename

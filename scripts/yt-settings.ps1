@@ -5,6 +5,11 @@
 # Examples: "chrome", "firefox", "firefox:C:/Users/You/AppData/Roaming/zen/Profiles/xxxxx.Default (release)"
 $COOKIES = ""
 
+# Cookies file in Netscape format (used instead of $COOKIES when $USE_COOKIES_FILE = $true)
+# Example: "$env:USERPROFILE\Downloads\cookies.txt"
+$COOKIES_FILE = ""
+$USE_COOKIES_FILE = $false
+
 # Output directory
 $OUTPUT_DIR = "$env:USERPROFILE\Videos"
 
