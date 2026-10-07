@@ -6,11 +6,15 @@
 $cookieArgs = Get-CookieArgs $COOKIES $COOKIES_FILE $USE_COOKIES_FILE
 if ($null -eq $cookieArgs) { return }
 
-$URL   = Read-Host "URL"
-$START = Read-Host "Start time (e.g. 00:01:30)"
-$END   = Read-Host "End time (e.g. 00:02:45)"
-
-if (-not $URL) { Write-Host "Error: URL is required"; exit 1 }
+$inp = Read-Steps @(
+    @{ Name = "URL";   Prompt = "URL" },
+    @{ Name = "START"; Prompt = "Start time (e.g. 00:01:30)" },
+    @{ Name = "END";   Prompt = "End time (e.g. 00:02:45)" }
+)
+if ($null -eq $inp) { $CANCELLED = $true; return }
+$URL   = $inp.URL
+$START = $inp.START
+$END   = $inp.END
 
 Ensure-OutputDirectory $OUTPUT_DIR
 

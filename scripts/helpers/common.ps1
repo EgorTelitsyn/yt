@@ -66,10 +66,11 @@ function Get-PathCompletions([string]$text, [bool]$directoryOnly) {
         ForEach-Object { if ($_.PSIsContainer) { "$dir$($_.Name)\" } else { "$dir$($_.Name)" } }
 }
 
-# Line input with path completion: Tab / Shift+Tab cycle matches, Esc cancels (returns $null)
-function Read-PathInput([string]$prompt, [switch]$DirectoryOnly) {
+# Line input prefilled with $initial; Esc cancels (returns $null).
+# -Path enables Tab / Shift+Tab completion (-DirectoryOnly limits it to folders).
+function Read-Input([string]$prompt, [string]$initial = "", [switch]$Path, [switch]$DirectoryOnly) {
     Write-Host $prompt -NoNewline
-    $text      = ""
+    $text      = $initial
     $drawnLen  = 0
     $startLeft = [Console]::CursorLeft
     $startTop  = [Console]::CursorTop
@@ -77,11 +78,26 @@ function Read-PathInput([string]$prompt, [switch]$DirectoryOnly) {
     $mi        = -1
 
     while ($true) {
+        # Redraw (input may wrap across lines and scroll the buffer)
+        $w = [Console]::BufferWidth
+        [Console]::SetCursorPosition($startLeft, $startTop)
+        $pad = [Math]::Max(0, $drawnLen - $text.Length)
+        [Console]::Write($text + (' ' * $pad))
+        $drawnLen = $text.Length
+        $end = $startLeft + $text.Length + $pad
+        $top = [Console]::CursorTop
+        if ($end -gt 0 -and $end % $w -eq 0 -and [Console]::CursorLeft -ne 0) { $top++ }  # delayed wrap
+        $startTop = $top - [Math]::Floor($end / $w)
+        $pos = $startLeft + $text.Length
+        $row = [Math]::Min($startTop + [Math]::Floor($pos / $w), [Console]::BufferHeight - 1)
+        [Console]::SetCursorPosition($pos % $w, $row)
+
         $key = [Console]::ReadKey($true)
         if ($key.Key -eq "Enter")  { Write-Host ""; return $text }
         if ($key.Key -eq "Escape") { Write-Host ""; return $null }
 
         if ($key.Key -eq "Tab") {
+            if (-not $Path) { continue }
             if ($null -eq $matches_) { $matches_ = @(Get-PathCompletions $text $DirectoryOnly.IsPresent) }
             if ($matches_.Count -eq 0) { continue }
             $back = ($key.Modifiers -band [ConsoleModifiers]::Shift)
@@ -99,25 +115,30 @@ function Read-PathInput([string]$prompt, [switch]$DirectoryOnly) {
                 $text = $text.Substring(0, $text.Length - 1)
             } elseif ($key.KeyChar -and -not [char]::IsControl($key.KeyChar)) {
                 $text += $key.KeyChar
-            } else {
-                continue
             }
         }
-
-        # Redraw (input may wrap across lines and scroll the buffer)
-        $w = [Console]::BufferWidth
-        [Console]::SetCursorPosition($startLeft, $startTop)
-        $pad = [Math]::Max(0, $drawnLen - $text.Length)
-        [Console]::Write($text + (' ' * $pad))
-        $drawnLen = $text.Length
-        $end = $startLeft + $text.Length + $pad
-        $top = [Console]::CursorTop
-        if ($end -gt 0 -and $end % $w -eq 0 -and [Console]::CursorLeft -ne 0) { $top++ }  # delayed wrap
-        $startTop = $top - [Math]::Floor($end / $w)
-        $pos = $startLeft + $text.Length
-        $row = [Math]::Min($startTop + [Math]::Floor($pos / $w), [Console]::BufferHeight - 1)
-        [Console]::SetCursorPosition($pos % $w, $row)
     }
+}
+
+# Asks for the given fields in order; Esc goes back one field, Esc on the first one returns $null.
+# Empty answers are not accepted. Returns a hashtable Name -> value.
+function Read-Steps($steps) {
+    $values = @{}
+    $i = 0
+    while ($i -lt $steps.Count) {
+        $s = $steps[$i]
+        $v = Read-Input "$($s.Prompt): " $values[$s.Name]
+        if ($null -eq $v) {
+            if ($i -eq 0) { return $null }
+            $i--
+            continue
+        }
+        $v = $v.Trim()
+        if (-not $v) { continue }
+        $values[$s.Name] = $v
+        $i++
+    }
+    return $values
 }
 
 function Get-DownloadPreview($url, $outputTemplate, $cookieArgs, $formatArgs) {

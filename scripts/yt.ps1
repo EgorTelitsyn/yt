@@ -186,11 +186,12 @@ function Show-Settings {
                 [Console]::CursorVisible = $true
                 $cval = (Get-Variable -Name "COOKIES" -ValueOnly)
                 Write-Host ""
-                Write-Host "  Current: " -NoNewline
-                if ($cval) { Write-Host $cval -ForegroundColor Cyan } else { Write-Host "disabled" -ForegroundColor DarkGray }
                 Write-Host "  Browser name, browser:path, or empty to disable" -ForegroundColor DarkGray
-                $newVal = Read-Host "  "
-                Set-Variable -Name "COOKIES" -Value $newVal
+                Write-Host "  Enter: save  |  Esc: cancel" -ForegroundColor DarkGray
+                $newVal = Read-Input "  : " $cval
+                if ($null -ne $newVal) {
+                    Set-Variable -Name "COOKIES" -Value $newVal.Trim()
+                }
                 [Console]::CursorVisible = $false
                 [Console]::Clear()
                 Write-Host ""
@@ -202,11 +203,9 @@ function Show-Settings {
                 [Console]::CursorVisible = $true
                 $cfval = (Get-Variable -Name "COOKIES_FILE" -ValueOnly)
                 Write-Host ""
-                Write-Host "  Current: " -NoNewline
-                if ($cfval) { Write-Host (Expand-UserPath $cfval) -ForegroundColor Cyan } else { Write-Host "disabled" -ForegroundColor DarkGray }
                 Write-Host "  Path to cookies.txt (Netscape format), empty to disable" -ForegroundColor DarkGray
-                Write-Host "  Tab: complete path  |  Esc: cancel" -ForegroundColor DarkGray
-                $newVal = Read-PathInput "  : "
+                Write-Host "  Tab: complete path  |  Enter: save  |  Esc: cancel" -ForegroundColor DarkGray
+                $newVal = Read-Input "  : " $cfval -Path
                 if ($null -ne $newVal) {
                     $newVal = $newVal.Trim().Trim('"')
                     if ($newVal -and -not (Test-Path -LiteralPath (Expand-UserPath $newVal) -PathType Leaf)) {
@@ -225,13 +224,10 @@ function Show-Settings {
                 # Output directory editor
                 [Console]::CursorVisible = $true
                 $odval = (Get-Variable -Name "OUTPUT_DIR" -ValueOnly)
-                $oddesc = $ExecutionContext.InvokeCommand.ExpandString($odval)
                 Write-Host ""
-                Write-Host "  Current: " -NoNewline
-                Write-Host $oddesc -ForegroundColor Cyan
                 Write-Host "  Full path or use `$env:USERPROFILE for user directory" -ForegroundColor DarkGray
-                Write-Host "  Tab: complete path  |  Esc: cancel" -ForegroundColor DarkGray
-                $newVal = Read-PathInput "  : " -DirectoryOnly
+                Write-Host "  Tab: complete path  |  Enter: save  |  Esc: cancel" -ForegroundColor DarkGray
+                $newVal = Read-Input "  : " $odval -Path -DirectoryOnly
                 if ($newVal) {
                     $newVal = $newVal.Trim().Trim('"').TrimEnd('\', '/')
                     Set-Variable -Name "OUTPUT_DIR" -Value $newVal
@@ -314,9 +310,12 @@ while ($true) {
             [Console]::Clear()
             Write-Host ""
             $scriptPath = Join-Path $PSScriptRoot $items[$sel].Script
+            $CANCELLED = $false  # set by the script when Esc is pressed on its first input
             . $scriptPath
-            Write-Host ""
-            Read-Host "  Press Enter to return to menu"
+            if (-not $CANCELLED) {
+                Write-Host ""
+                Read-Host "  Press Enter to return to menu"
+            }
             Show-MainMenu
         }
     }

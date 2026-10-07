@@ -5,7 +5,9 @@
 $cookieArgs = Get-CookieArgs $COOKIES $COOKIES_FILE $USE_COOKIES_FILE
 if ($null -eq $cookieArgs) { return }
 
-$URL = Read-Host "URL"
+$inp = Read-Steps @(@{ Name = "URL"; Prompt = "URL" })
+if ($null -eq $inp) { $CANCELLED = $true; return }
+$URL = $inp.URL
 
 Ensure-OutputDirectory $OUTPUT_DIR
 $outputTpl = "$OUTPUT_DIR\%(title)s.%(ext)s"
