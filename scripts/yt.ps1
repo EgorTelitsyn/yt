@@ -1,5 +1,6 @@
 # yt-dlp downloader -- interactive launcher
 . "$PSScriptRoot\yt-settings.ps1"
+. "$PSScriptRoot\helpers\common.ps1"
 
 $settingsFile = Join-Path $PSScriptRoot "yt-settings.ps1"
 $cachePath    = Join-Path $PSScriptRoot ".yt-update-cache.json"
@@ -91,7 +92,8 @@ function Show-Settings {
     $toggles = @(
         @{ Var = "EMBED_METADATA";    Label = "Embed metadata";    Desc = "title, author, description" },
         @{ Var = "EMBED_THUMBNAIL";   Label = "Embed thumbnail";   Desc = "cover image (jpg)" },
-        @{ Var = "WRITE_DESCRIPTION"; Label = "Write description"; Desc = "save .description file" }
+        @{ Var = "WRITE_DESCRIPTION"; Label = "Write description"; Desc = "save .description file" },
+        @{ Var = "USE_COOKIES_FILE";  Label = "Use cookies file";  Desc = "cookies.txt instead of browser" }
     )
 
     $totalItems = $toggles.Count + 2  # +2 for Cookies and Output dir
@@ -113,10 +115,16 @@ function Show-Settings {
                 Write-Host " $desc" -ForegroundColor DarkGray
             }
         }
-        # Cookies item
-        $cval = (Get-Variable -Name "COOKIES" -ValueOnly)
-        if ($cval) { $cdesc = $cval } else { $cdesc = "disabled" }
-        $clabel = "Cookies".PadRight(20)
+        # Cookies item (browser or file, depending on USE_COOKIES_FILE)
+        if ($USE_COOKIES_FILE) {
+            $cval = (Get-Variable -Name "COOKIES_FILE" -ValueOnly)
+            $clabel = "Cookies file".PadRight(20)
+            if ($cval) { $cdesc = Expand-UserPath $cval } else { $cdesc = "disabled" }
+        } else {
+            $cval = (Get-Variable -Name "COOKIES" -ValueOnly)
+            $clabel = "Cookies".PadRight(20)
+            if ($cval) { $cdesc = $cval } else { $cdesc = "disabled" }
+        }
         if ($ssel -eq $toggles.Count) {
             Write-Host "  >     " -NoNewline -ForegroundColor Cyan
             Write-Host "$clabel" -NoNewline -ForegroundColor Cyan
@@ -165,8 +173,16 @@ function Show-Settings {
                 $varName = $toggles[$ssel].Var
                 $current = (Get-Variable -Name $varName -ValueOnly)
                 Set-Variable -Name $varName -Value (-not $current)
-            } elseif ($ssel -eq $toggles.Count) {
-                # Cookies editor
+                if ($varName -eq "USE_COOKIES_FILE") {
+                    # Cookies row text changes length -- clear leftovers
+                    [Console]::Clear()
+                    Write-Host ""
+                    Write-Host "  Settings" -ForegroundColor Cyan
+                    Write-Host ""
+                    $settingsTop = [Console]::CursorTop
+                }
+            } elseif ($ssel -eq $toggles.Count -and -not $USE_COOKIES_FILE) {
+                # Cookies (browser) editor
                 [Console]::CursorVisible = $true
                 $cval = (Get-Variable -Name "COOKIES" -ValueOnly)
                 Write-Host ""
@@ -175,6 +191,30 @@ function Show-Settings {
                 Write-Host "  Browser name, browser:path, or empty to disable" -ForegroundColor DarkGray
                 $newVal = Read-Host "  "
                 Set-Variable -Name "COOKIES" -Value $newVal
+                [Console]::CursorVisible = $false
+                [Console]::Clear()
+                Write-Host ""
+                Write-Host "  Settings" -ForegroundColor Cyan
+                Write-Host ""
+                $settingsTop = [Console]::CursorTop
+            } elseif ($ssel -eq $toggles.Count) {
+                # Cookies file editor
+                [Console]::CursorVisible = $true
+                $cfval = (Get-Variable -Name "COOKIES_FILE" -ValueOnly)
+                Write-Host ""
+                Write-Host "  Current: " -NoNewline
+                if ($cfval) { Write-Host (Expand-UserPath $cfval) -ForegroundColor Cyan } else { Write-Host "disabled" -ForegroundColor DarkGray }
+                Write-Host "  Path to cookies.txt (Netscape format), empty to disable" -ForegroundColor DarkGray
+                Write-Host "  Tab: complete path  |  Esc: cancel" -ForegroundColor DarkGray
+                $newVal = Read-PathInput "  : "
+                if ($null -ne $newVal) {
+                    $newVal = $newVal.Trim().Trim('"')
+                    if ($newVal -and -not (Test-Path -LiteralPath (Expand-UserPath $newVal) -PathType Leaf)) {
+                        Write-Host "  File not found, saved anyway" -ForegroundColor Yellow
+                        Start-Sleep -Milliseconds 1200
+                    }
+                    Set-Variable -Name "COOKIES_FILE" -Value $newVal
+                }
                 [Console]::CursorVisible = $false
                 [Console]::Clear()
                 Write-Host ""
@@ -190,8 +230,10 @@ function Show-Settings {
                 Write-Host "  Current: " -NoNewline
                 Write-Host $oddesc -ForegroundColor Cyan
                 Write-Host "  Full path or use `$env:USERPROFILE for user directory" -ForegroundColor DarkGray
-                $newVal = Read-Host "  "
+                Write-Host "  Tab: complete path  |  Esc: cancel" -ForegroundColor DarkGray
+                $newVal = Read-PathInput "  : " -DirectoryOnly
                 if ($newVal) {
+                    $newVal = $newVal.Trim().Trim('"').TrimEnd('\', '/')
                     Set-Variable -Name "OUTPUT_DIR" -Value $newVal
                 }
                 [Console]::CursorVisible = $false
@@ -214,13 +256,19 @@ function Show-Settings {
         $varName = $t.Var
         $val = (Get-Variable -Name $varName -ValueOnly)
         if ($val) { $valStr = '$$true' } else { $valStr = '$$false' }
-        $content = $content -replace ("\`$$varName\s*=\s*\`$$\w+"), "`$$varName = $valStr"
+        $content = $content -replace ('(?m)^\$' + $varName + '\s*=\s*\$\w+'), ('$' + $varName + ' = ' + $valStr)
     }
     # Save cookies
     $cval = (Get-Variable -Name "COOKIES" -ValueOnly)
     $oldCookies = [regex]::Match($content, '\$COOKIES\s*=\s*"[^"]*"').Value
     if ($oldCookies) {
         $content = $content.Replace($oldCookies, '$COOKIES = "' + $cval + '"')
+    }
+    # Save cookies file
+    $cfval = (Get-Variable -Name "COOKIES_FILE" -ValueOnly)
+    $oldCookiesFile = [regex]::Match($content, '\$COOKIES_FILE\s*=\s*"[^"]*"').Value
+    if ($oldCookiesFile) {
+        $content = $content.Replace($oldCookiesFile, '$COOKIES_FILE = "' + $cfval + '"')
     }
     # Save output directory
     $odval = (Get-Variable -Name "OUTPUT_DIR" -ValueOnly)

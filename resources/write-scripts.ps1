@@ -17,15 +17,17 @@ function Write-YtSettings {
         $content = Get-Content $settingsPath -Raw
         $missing = @()
         $defaults = @(
-            @{ Var = "COOKIES";           Line = '$$COOKIES = ""' },
-            @{ Var = "OUTPUT_DIR";        Line = '$$OUTPUT_DIR = "$$env:USERPROFILE\Videos"' },
-            @{ Var = "MAX_RESOLUTION";    Line = '$$MAX_RESOLUTION = 1440' },
-            @{ Var = "VIDEO_FORMAT";      Line = '$$VIDEO_FORMAT = "bestvideo[height<=$$MAX_RESOLUTION][vcodec*=265]+bestaudio/bestvideo[height<=$$MAX_RESOLUTION][vcodec*=264]+bestaudio/bestvideo[height<=$$MAX_RESOLUTION][vcodec!*=vp0][vcodec!*=vp9][vcodec!*=av01]+bestaudio/best"' },
-            @{ Var = "VIDEO_SORT";        Line = '$$VIDEO_SORT = "res:$$MAX_RESOLUTION,vcodec:h265,acodec:aac"' },
-            @{ Var = "MERGE_FORMAT";      Line = '$$MERGE_FORMAT = "mp4"' },
-            @{ Var = "EMBED_METADATA";    Line = '$$EMBED_METADATA = $$true' },
-            @{ Var = "EMBED_THUMBNAIL";   Line = '$$EMBED_THUMBNAIL = $$true' },
-            @{ Var = "WRITE_DESCRIPTION"; Line = '$$WRITE_DESCRIPTION = $$false' }
+            @{ Var = "COOKIES";           Line = '$COOKIES = ""' },
+            @{ Var = "COOKIES_FILE";      Line = '$COOKIES_FILE = ""' },
+            @{ Var = "USE_COOKIES_FILE";  Line = '$USE_COOKIES_FILE = $false' },
+            @{ Var = "OUTPUT_DIR";        Line = '$OUTPUT_DIR = "$env:USERPROFILE\Videos"' },
+            @{ Var = "MAX_RESOLUTION";    Line = '$MAX_RESOLUTION = 1440' },
+            @{ Var = "VIDEO_FORMAT";      Line = '$VIDEO_FORMAT = "bestvideo[height<=$MAX_RESOLUTION][vcodec*=265]+bestaudio/bestvideo[height<=$MAX_RESOLUTION][vcodec*=264]+bestaudio/bestvideo[height<=$MAX_RESOLUTION][vcodec!*=vp0][vcodec!*=vp9][vcodec!*=av01]+bestaudio/best"' },
+            @{ Var = "VIDEO_SORT";        Line = '$VIDEO_SORT = "res:$MAX_RESOLUTION,vcodec:h265,acodec:aac"' },
+            @{ Var = "MERGE_FORMAT";      Line = '$MERGE_FORMAT = "mp4"' },
+            @{ Var = "EMBED_METADATA";    Line = '$EMBED_METADATA = $true' },
+            @{ Var = "EMBED_THUMBNAIL";   Line = '$EMBED_THUMBNAIL = $true' },
+            @{ Var = "WRITE_DESCRIPTION"; Line = '$WRITE_DESCRIPTION = $false' }
         )
         foreach ($d in $defaults) {
             if ($content -notmatch ("\`$$($d.Var)\s*=")) {

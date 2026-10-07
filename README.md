@@ -43,6 +43,7 @@ Open via `yt` > Settings, or edit `~/bin/yt-settings.ps1` manually.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `$COOKIES` | `""` | Browser cookies for auth (e.g. `"chrome"`, `"firefox:path/to/profile"`) |
+| `$COOKIES_FILE` | `""` | Path to a `cookies.txt` in Netscape format; used instead of `$COOKIES` when "Use cookies file" is on |
 | `$OUTPUT_DIR` | `~/Videos` | Download directory |
 | `$MAX_RESOLUTION` | `1440` | Max video resolution |
 
@@ -53,6 +54,7 @@ Open via `yt` > Settings, or edit `~/bin/yt-settings.ps1` manually.
 | Embed metadata | on | `--embed-metadata` |
 | Embed thumbnail | on | `--embed-thumbnail --convert-thumbnails jpg` |
 | Write description | off | `--write-description` |
+| Use cookies file | off | `--cookies $COOKIES_FILE` instead of `--cookies-from-browser $COOKIES` |
 
 ## Defaults
 

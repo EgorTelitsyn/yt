@@ -2,6 +2,9 @@
 . "$PSScriptRoot\yt-settings.ps1"
 . "$PSScriptRoot\helpers\common.ps1"
 
+$cookieArgs = Get-CookieArgs $COOKIES $COOKIES_FILE $USE_COOKIES_FILE
+if ($null -eq $cookieArgs) { return }
+
 $URL = Read-Host "URL"
 
 Ensure-OutputDirectory $OUTPUT_DIR
@@ -9,12 +12,12 @@ $outputTpl = "$OUTPUT_DIR\%(title)s.%(ext)s"
 
 # Preview
 $formatArgs = @("-S", $VIDEO_SORT, "-f", $VIDEO_FORMAT, "--merge-output-format", $MERGE_FORMAT)
-$filename = Get-DownloadPreview $URL $outputTpl $COOKIES $formatArgs
+$filename = Get-DownloadPreview $URL $outputTpl $cookieArgs $formatArgs
 
 Write-DownloadInfo $OUTPUT_DIR $filename $null
 
 $args_ = @("--ignore-config")
-if ($COOKIES) { $args_ += "--cookies-from-browser", $COOKIES }
+$args_ += $cookieArgs
 $args_ += "-S", $VIDEO_SORT
 $args_ += "-f", $VIDEO_FORMAT
 $args_ += "--merge-output-format", $MERGE_FORMAT
@@ -25,6 +28,6 @@ $args_ += "--ignore-errors", "--no-overwrites", "--progress"
 $args_ += "-o", $outputTpl
 $args_ += $URL
 
-& yt-dlp @args_
+& $YTDLP @args_
 
 Write-Success $filename
